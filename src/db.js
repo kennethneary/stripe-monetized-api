@@ -2,14 +2,14 @@
 const customers = {
   // stripeCustomerId : data
   stripeCustomerId: {
-    apiKey: "123xyz",
+    apiKey: '123xyz',
     active: false,
-    itemId: "stripeSubscriptionItemId",
+    itemId: 'stripeSubscriptionItemId',
   },
 };
 const apiKeys = {
   // apiKey : customerdata
-  "123xyz": "stripeCustomerId",
+  '123xyz': 'stripeCustomerId',
 };
 
 module.exports = {

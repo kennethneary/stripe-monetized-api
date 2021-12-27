@@ -1,26 +1,27 @@
-const express = require("express");
-const config = require("./config");
-const { generateAPIKey, hashAPIKey } = require("./util");
-const { customers, apiKeys } = require("./db");
-const stripe = require("stripe")(config.key);
+/* eslint-disable import/order, camelcase, no-return-assign */
+const express = require('express');
+const config = require('./config.json');
+const { generateAPIKey, hashAPIKey } = require('./util');
+const { customers, apiKeys } = require('./db');
+const stripe = require('stripe')(config.key);
 
 const app = express();
 
 // Middleware required for Webhook Handler
 app.use(
   express.json({
-    verify: (req, res, buffer, encoding) => (req["rawBody"] = buffer),
-  })
+    verify: (req, _res, buffer) => (req.rawBody = buffer),
+  }),
 );
 
 // Make a call to the API
-app.get("/api", async (req, res) => {
+app.get('/api', async (req, res) => {
   console.log(req.headers);
-  const apiKey = req.headers["x-api-key"];
+  const apiKey = req.headers['x-api-key'];
   console.log(`apiKey: ${apiKey}`);
 
   if (!apiKey) {
-    console.log("in bad request code");
+    console.log('in bad request code');
     return res.sendStatus(400); // bad request
   }
 
@@ -30,41 +31,40 @@ app.get("/api", async (req, res) => {
   const customer = customers[customerId];
 
   if (!customer || !customer.active) {
-    res.sendStatus(403); // not authorized
-  } else {
-    // Record usage with Stripe Billing
-    const record = await stripe.subscriptionItems.createUsageRecord(
-      customer.itemId,
-      {
-        quantity: 1,
-        timestamp: "now",
-        action: "increment",
-      }
-    );
-    res.send({ data: "paid for information", usage: record });
+    return res.sendStatus(403); // not authorized
   }
+  // Record usage with Stripe Billing
+  const record = await stripe.subscriptionItems.createUsageRecord(
+    customer.itemId,
+    {
+      quantity: 1,
+      timestamp: 'now',
+      action: 'increment',
+    },
+  );
+  return res.send({ data: 'paid for information', usage: record });
 });
 
 // Create a Stripe Checkout Session to create a customer and subscribe them to a plan
-app.get("/checkout", async (req, res) => {
+app.get('/checkout', async (req, res) => {
   const { url } = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    payment_method_types: ["card"],
+    mode: 'subscription',
+    payment_method_types: ['card'],
     line_items: [
       {
         price: config.priceId,
       },
     ],
     success_url:
-      "http://localhost:8080/success?session_id={CHECKOUT_SESSION_ID}",
-    cancel_url: "http://localhost:8080/error",
+      'http://localhost:8080/success?session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: 'http://localhost:8080/error',
   });
 
-  res.redirect(url);
+  return res.redirect(url);
 });
 
 // Listen to webhooks from Stripe when important events happen
-app.post("/webhook", async (req, res) => {
+app.post('/webhook', async (req, res) => {
   let data;
   let eventType;
   // Check if webhook signing is configured.
@@ -73,16 +73,16 @@ app.post("/webhook", async (req, res) => {
   if (webhookSecret) {
     // Retrieve the event by verifying the signature using the raw body and secret.
     let event;
-    let signature = req.headers["stripe-signature"];
+    const signature = req.headers['stripe-signature'];
 
     try {
       event = stripe.webhooks.constructEvent(
-        req["rawBody"],
+        req.rawBody,
         signature,
-        webhookSecret
+        webhookSecret,
       );
     } catch (err) {
-      console.log("Webhook signature verification failed.");
+      console.log('Webhook signature verification failed.');
       return res.sendStatus(400);
     }
 
@@ -97,14 +97,14 @@ app.post("/webhook", async (req, res) => {
   }
 
   switch (eventType) {
-    case "checkout.session.completed":
+    case 'checkout.session.completed': {
       console.log(data);
       // Data included in the event object:
       const customerId = data.object.customer;
       const subscriptionId = data.object.subscription;
 
       console.log(
-        `Customer ${customerId} subscribed to plan ${subscriptionId}`
+        `Customer ${customerId} subscribed to plan ${subscriptionId}`,
       );
 
       // Get the subscription. The first item is the plan the user subscribed to.
@@ -124,20 +124,21 @@ app.post("/webhook", async (req, res) => {
       };
       apiKeys[hashedAPIKey] = customerId;
       break;
-    case "invoice.paid":
+    }
+    case 'invoice.paid':
       console.log(data);
       break;
-    case "invoice.payment_failed":
+    case 'invoice.payment_failed':
       console.log(data);
       break;
     default:
     // Unhandled event type
   }
 
-  res.sendStatus(200);
+  return res.sendStatus(200);
 });
 
-app.get("/usage/:customer", async (req, res) => {
+app.get('/usage/:customer', async (req, res) => {
   const customerId = req.params.customer;
   const invoice = await stripe.invoices.retrieveUpcoming({
     customer: customerId,
@@ -146,13 +147,13 @@ app.get("/usage/:customer", async (req, res) => {
   res.send(invoice);
 });
 
-app.get("/success", (req, res) => {
+app.get('/success', (req, res) => {
   const { session_id } = req.query;
   res.send({ data: { session_id } });
 });
 
-app.get("/error", (req, res) => {
-  res.status(500).send("Error at checkout");
+app.get('/error', (req, res) => {
+  res.status(500).send('Error at checkout');
 });
 
-app.listen(8080, () => console.log("alive on http://localhost:8080"));
+app.listen(8080, () => console.log('alive on http://localhost:8080'));
