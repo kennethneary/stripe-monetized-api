@@ -138,7 +138,7 @@ app.post('/webhook', async (req, res) => {
   return res.sendStatus(200);
 });
 
-app.get('/mock/db', async (req, res) => {
+app.get('/mock/db', (req, res) => {
   res.send({ apiKeys, customers });
 });
 
