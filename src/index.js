@@ -1,8 +1,8 @@
-/* eslint-disable import/order, camelcase, no-return-assign */
+/* eslint-disable no-console, import/order, camelcase, no-return-assign */
 const express = require('express');
 const config = require('./config.json');
 const { generateAPIKey, hashAPIKey } = require('./util');
-const { customers, apiKeys } = require('./db');
+const { customers, apiKeys } = require('./mock-db');
 const stripe = require('stripe')(config.key);
 
 const app = express();
@@ -136,6 +136,10 @@ app.post('/webhook', async (req, res) => {
   }
 
   return res.sendStatus(200);
+});
+
+app.get('/mock/db', async (req, res) => {
+  res.send({ apiKeys, customers });
 });
 
 app.get('/usage/:customer', async (req, res) => {

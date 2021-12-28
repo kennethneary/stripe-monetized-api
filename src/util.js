@@ -1,5 +1,5 @@
 const { createHash, randomBytes } = require('crypto');
-const { apiKeys } = require('./db');
+const { apiKeys } = require('./mock-db');
 
 // Hash the API key
 function hashAPIKey(apiKey) {
